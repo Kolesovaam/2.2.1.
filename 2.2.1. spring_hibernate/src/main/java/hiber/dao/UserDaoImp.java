@@ -1,6 +1,5 @@
 package hiber.dao;
 
-import hiber.model.Car;
 import hiber.model.User;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -10,8 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.persistence.Query;
-import javax.persistence.TypedQuery;
 import java.util.List;
+
 
 @Repository
 public class UserDaoImp implements UserDao {
@@ -27,21 +26,22 @@ public class UserDaoImp implements UserDao {
     @Override
     @SuppressWarnings("unchecked")
     public List<User> listUsers() {
-        TypedQuery<User> query = sessionFactory.getCurrentSession().createQuery("from User");
-        return query.getResultList();
+        List<User> result;
+        try (Session session = sessionFactory.openSession()) {
+            result = session.createQuery("from User").getResultList();
+        }
+        return result;
     }
 
     @Override
-    public User findUserByCar(String model, int i) {
-        Session session = sessionFactory.openSession();
-        Transaction tx1 = session.beginTransaction();
-        Query query = session.createQuery("from Car where model = :Model and series = :Series");
-        query.setParameter("Model", model);
-        query.setParameter("Series", i);
-
-        Car singleResult = (Car) query.getSingleResult();
-        session.close();
-        return singleResult.getUser();
+    public User findUserByCar(String model, int series) {
+        try (Session session = sessionFactory.openSession()) {
+            session.beginTransaction();
+            Query query = session.createQuery("from User where car IN  (from Car where model = :Model and series = :Series)");
+            query.setParameter("Model", model);
+            query.setParameter("Series", series);
+            return (User) query.getSingleResult();
+        }
     }
 
     @Override
